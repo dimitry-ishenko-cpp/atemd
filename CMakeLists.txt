@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.1)
+project(atemd VERSION 0.0)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+add_definitions(-DASIO_STANDALONE -DASIO_NO_DEPRECATED)
+add_definitions(-DVERSION="${PROJECT_VERSION}")
+
+set(SOURCES src/main.cpp)
+
+include(GNUInstallDirs)
+
+add_executable(${PROJECT_NAME} ${SOURCES})
+install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
