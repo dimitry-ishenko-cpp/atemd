@@ -6,9 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-add_definitions(-DASIO_STANDALONE -DASIO_NO_DEPRECATED)
-add_definitions(-DVERSION="${PROJECT_VERSION}")
-
 set(SOURCES
     pgm/args.ipp pgm/args.hpp
     src/main.cpp
@@ -17,4 +14,7 @@ set(SOURCES
 include(GNUInstallDirs)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ASIO_STANDALONE ASIO_NO_DEPRECATED)
+target_compile_definitions(${PROJECT_NAME} PRIVATE VERSION="${PROJECT_VERSION}")
+
 install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
