@@ -5,43 +5,39 @@
 // Distributed under the GNU GPL license. See the LICENSE.md file for details.
 
 ////////////////////////////////////////////////////////////////////////////////
+#include <asio.hpp>
+#include <atem++.hpp>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 
+#include "connection.hpp"
 #include "pgm/args.hpp"
+#include "server.hpp"
 
-constexpr auto default_bind_address = "0.0.0.0";
-constexpr auto default_bind_port = 8899;
+using std::string;
 
-constexpr auto default_atem_port = 9910;
+////////////////////////////////////////////////////////////////////////////////
+const string default_bind_address = "0.0.0.0";
+const string default_bind_port = "8899";
 
-const auto default_bind_uri = std::string{ } + default_bind_address + ":" + std::to_string(default_bind_port);
-const auto default_atem_uri = std::to_string(default_atem_port);
+const string default_atem_port = "9910";
 
-auto parse_uri(const std::string& uri, const std::string& default_address, int default_port)
+const string default_bind_uri = default_bind_address + ":" + default_bind_port;
+
+////////////////////////////////////////////////////////////////////////////////
+auto parse_uri(const string& uri, const string& default_address, const string& default_port)
 {
-    std::string address;
-    int port;
+    string address, port;
 
     if(auto p = uri.find(':'); p != uri.npos)
     {
         address = uri.substr(0, p);
-        if(address.empty()) address = default_address;
+        port = uri.substr(p+1);
 
-        auto tail = uri.substr(p+1);
-        std::size_t done;
-        try
-        {
-            port = std::stoi(tail, &done, 0);
-            if(done != tail.size()) throw;
-        }
-        catch(...)
-        {
-            throw std::invalid_argument{"Invalid port # '" + tail + "'"};
-        }
+        if(address.empty()) address = default_address;
     }
     else
     {
@@ -49,14 +45,27 @@ auto parse_uri(const std::string& uri, const std::string& default_address, int d
         port = default_port;
     }
 
-    return std::make_tuple(std::move(address), port);
+    return std::make_tuple(std::move(address), std::move(port));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+void show_info(const atem::device& device)
+{
+    std::cout << "Name: " << device.prod_info() << std::endl;
+    std::cout << "Protocol version: " << device.protocol().major << '.' << device.protocol().minor << std::endl;
+    std::cout << "# of M/Es: " << device.me_count() << std::endl;
+    std::cout << "# of inputs: " << device.input_count() << std::endl;
+
+    for(auto n = 0; n < device.input_count(); ++n)
+        std::cout << device.input(n).id() << ' ' << device.input(n).name() << std::endl;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 try
 {
     namespace fs = std::filesystem;
-    std::string name = fs::path{argv[0]}.filename();
+    auto name = fs::path{argv[0]}.filename().string();
 
     pgm::args args
     {
@@ -64,7 +73,7 @@ try
         { "-h", "--help",                     "Print this help screen and exit." },
         { "-v", "--version",                  "Show version number and exit."    },
 
-        { "atem-uri",                         "ATEM switcher URI as hostname[:port]. Default port: " + default_atem_uri },
+        { "atem-uri",                         "ATEM URI in the form hostname[:port]. Default port: " + default_atem_port },
     };
 
     std::exception_ptr ep;
@@ -89,11 +98,53 @@ try
         auto [local_address, local_port] = parse_uri(local, default_bind_address, default_bind_port);
 
         auto remote = args["atem-uri"].value();
-        auto [remote_address, remote_port] = parse_uri(remote, "", default_atem_port);
+        string remote_address, remote_port;
+        std::tie(remote_address, remote_port) = parse_uri(remote, "", default_atem_port);
 
-        // connect to switcher
-        // create server
-        // wait for connection
+        asio::io_context ctx;
+
+        atem::device device{ctx, remote_address, remote_port};
+        device.on_offline([]{ throw std::runtime_error{"Lost connection to ATEM"}; });
+
+        server server{ctx, local_address, local_port};
+        std::cout << "Bound to " << local_address << ":" << local_port << std::endl;
+
+        server.on_accepted([&](auto sock)
+        {
+            std::cout << "Accepted connection from " << sock.remote_endpoint() << std::endl;
+
+            auto conn = connection::create(std::move(sock));
+            conn->on_recv([&](std::string cmd)
+            {
+                std::cout << "Received: " << cmd << std::endl;
+
+                if(cmd.compare(0, 4, "prv=") == 0)
+                {
+                    cmd.erase(0, 4);
+                    char* end;
+                    auto in = std::strtol(cmd.data(), &end, 0);
+
+                    if(end == cmd.data() + cmd.size())
+                        device.me(0).set_pvw(static_cast<atem::input_id>(in));
+                    else std::cout << "Invalid input # '" << cmd << "'" << std::endl;
+                }
+                else if(cmd == "auto") device.me(0).auto_trans();
+            });
+
+            std::cout << "Waiting for commands" << std::endl;
+            conn->start();
+        });
+
+        device.on_defined([&]
+        {
+            std::cout << "Connected to ATEM on " << remote_address << ":" << remote_port << std::endl;
+            show_info(device);
+
+            std::cout << "Listening for connections" << std::endl;
+            server.start();
+        });
+
+        ctx.run();
     }
 
     return 0;
