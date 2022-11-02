@@ -37,11 +37,11 @@ private:
 
     void async_accept()
     {
-        acceptor_.async_accept([=](auto ec, tcp::socket peer)
+        acceptor_.async_accept([=](auto ec, tcp::socket sock)
         {
             if(!ec)
             {
-                if(accept_cb_) accept_cb_(std::move(peer));
+                if(accept_cb_) accept_cb_(std::move(sock));
                 async_accept();
             }
         });
@@ -53,14 +53,14 @@ private:
         auto address_ = asio::ip::make_address(address, ec);
 
         if(ec) throw std::invalid_argument{
-            "Invalid address '" + std::string{address} + "'"
+            "Invalid address '" + string{address} + "'"
         };
 
         char* end;
         unsigned short port_ = std::strtol(port.data(), &end, 0);
 
         if(end != port.data() + port.size()) throw std::invalid_argument{
-            "Invalid port # '" + std::string{port} + "'"
+            "Invalid port # '" + string{port} + "'"
         };
 
         return tcp::endpoint{address_, port_};
