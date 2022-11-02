@@ -17,6 +17,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 class connection : public std::enable_shared_from_this<connection>
 {
+    using string = std::string;
     using tcp = asio::ip::tcp;
 
 public:
@@ -25,7 +26,7 @@ public:
         return std::shared_ptr<connection>(new connection{std::move(sock)});
     }
 
-    using recv_cb = std::function<void(std::string)>;
+    using recv_cb = std::function<void(string)>;
     void on_recv(recv_cb cb) { recv_cb_ = std::move(cb); }
 
     void start() { async_wait(); }
@@ -33,7 +34,7 @@ public:
 private:
     tcp::socket socket_;
     recv_cb recv_cb_;
-    std::string data_;
+    string data_;
 
     explicit connection(tcp::socket sock) : socket_{std::move(sock)} { }
 
@@ -54,7 +55,7 @@ private:
     {
         if(!ec)
         {
-            std::string data(socket_.available(), '\0');
+            string data(socket_.available(), '\0');
             socket_.receive(asio::buffer(data));
             data_ += data;
 
