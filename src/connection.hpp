@@ -66,7 +66,7 @@ private:
                 data_.erase(0, p + 1);
 
                 // ACK each command
-                socket_.send(asio::buffer("ACK\r\n"));
+                socket_.send(asio::buffer( string{"ACK\r\n"} ));
 
                 if(recv_cb_) recv_cb_(std::move(cmd));
             }
