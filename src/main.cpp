@@ -103,6 +103,16 @@ try
 
         asio::io_context ctx;
 
+        asio::signal_set signals(ctx, SIGINT, SIGTERM);
+        signals.async_wait([&](auto ec, int signal)
+        {
+            if(!ec)
+            {
+                std::cout << "Received signal " << signal << ", exiting" << std::endl;
+                ctx.stop();
+            }
+        });
+
         atem::device device{ctx, remote_address, remote_port};
         device.on_offline([]{ throw std::runtime_error{"Lost connection to ATEM"}; });
 
