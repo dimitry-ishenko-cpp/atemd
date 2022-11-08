@@ -51,13 +51,13 @@ auto parse_uri(const string& uri, const string& default_address, const string& d
 ////////////////////////////////////////////////////////////////////////////////
 void show_info(const atem::device& device)
 {
-    std::cout << "Name: " << device.prod_info() << std::endl;
+    std::cout << "Product name: " << device.prod_info() << std::endl;
     std::cout << "Protocol version: " << device.protocol().major << '.' << device.protocol().minor << std::endl;
-    std::cout << "# of M/Es: " << device.me_count() << std::endl;
-    std::cout << "# of inputs: " << device.input_count() << std::endl;
 
+    std::cout << "Inputs: ";
     for(auto n = 0; n < device.input_count(); ++n)
-        std::cout << device.input(n).id() << ' ' << device.input(n).name() << std::endl;
+        std::cout << device.input(n).id() << '-' << device.input(n).name() << ' ';
+    std::cout << std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
