@@ -21,9 +21,9 @@ class connection : public std::enable_shared_from_this<connection>
     using tcp = asio::ip::tcp;
 
 public:
-    static auto create(tcp::socket sock)
+    static auto create(tcp::socket socket)
     {
-        return std::shared_ptr<connection>(new connection{std::move(sock)});
+        return std::shared_ptr<connection>(new connection{ std::move(socket) });
     }
 
     using recv_cb = std::function<void(string)>;
@@ -36,11 +36,11 @@ private:
     recv_cb recv_cb_;
     string data_;
 
-    explicit connection(tcp::socket sock) : socket_{std::move(sock)} { }
+    explicit connection(tcp::socket socket) : socket_{std::move(socket)} { }
 
     void async_wait()
     {
-        // NB: Using shared_from_this() creates a copy of the
+        // NB: Using shared_from_this() here creates a copy of the
         // shared pointer, which is then bound with the recv() function
         // and passed to asio::io_context using async_await().
         // This keeps the connection alive for as long as it is

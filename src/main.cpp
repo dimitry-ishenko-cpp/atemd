@@ -119,12 +119,12 @@ try
         server server{ctx, local_address, local_port};
         std::cout << "Bound to " << local_address << ":" << local_port << std::endl;
 
-        server.on_accepted([&](auto sock)
+        server.on_accepted([&](auto socket)
         {
-            std::cout << "Accepted connection from " << sock.remote_endpoint() << std::endl;
+            std::cout << "Accepted connection from " << socket.remote_endpoint() << std::endl;
 
-            auto conn = connection::create(std::move(sock));
-            conn->on_recv([&](std::string cmd)
+            auto conn = connection::create(std::move(socket));
+            conn->on_recv([&](string cmd)
             {
                 std::cout << "Received: " << cmd << std::endl;
 

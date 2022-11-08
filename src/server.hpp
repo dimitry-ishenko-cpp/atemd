@@ -37,11 +37,11 @@ private:
 
     void async_accept()
     {
-        acceptor_.async_accept([=](auto ec, tcp::socket sock)
+        acceptor_.async_accept([=](auto ec, tcp::socket socket)
         {
             if(!ec)
             {
-                if(accept_cb_) accept_cb_(std::move(sock));
+                if(accept_cb_) accept_cb_(std::move(socket));
                 async_accept();
             }
         });
