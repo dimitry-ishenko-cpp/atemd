@@ -26,8 +26,13 @@ public:
         return std::shared_ptr<connection>(new connection{ std::move(socket) });
     }
 
-    using recv_cb = std::function<void(string)>;
+    using recv_cb = std::function<void(const string&)>;
     void on_received(recv_cb cb) { recv_cb_ = std::move(cb); }
+
+    void send(const string& data)
+    {
+        socket_.send(asio::buffer(data));
+    }
 
     void start() { async_wait(); }
 
@@ -62,13 +67,9 @@ private:
             for(std::size_t p; (p = data_.find('\n')) != data_.npos; )
             {
                 auto cmd = data_.substr(0, p);
-                if(cmd.back() == '\r') cmd.pop_back();
                 data_.erase(0, p + 1);
 
-                // ACK each command
-                socket_.send(asio::buffer( string{"ACK\r\n"} ));
-
-                if(recv_cb_) recv_cb_(std::move(cmd));
+                if(recv_cb_) recv_cb_(cmd);
             }
 
             async_wait();
