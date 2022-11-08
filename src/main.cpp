@@ -61,6 +61,24 @@ void show_info(const atem::device& device)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void execute(atem::device& device, string cmd)
+{
+    std::cout << "Received: " << cmd << std::endl;
+
+    if(cmd.compare(0, 4, "prv=") == 0)
+    {
+        cmd.erase(0, 4);
+        char* end;
+        auto in = std::strtol(cmd.data(), &end, 0);
+
+        if(end == cmd.data() + cmd.size())
+            device.me(0).set_pvw(static_cast<atem::input_id>(in));
+        else std::cout << "Invalid input # '" << cmd << "'" << std::endl;
+    }
+    else if(cmd == "auto") device.me(0).auto_trans();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 try
 {
@@ -103,7 +121,7 @@ try
 
         asio::io_context ctx;
 
-        asio::signal_set signals(ctx, SIGINT, SIGTERM);
+        asio::signal_set signals{ctx, SIGINT, SIGTERM};
         signals.async_wait([&](auto ec, int signal)
         {
             if(!ec)
@@ -124,22 +142,7 @@ try
             std::cout << "Accepted connection from " << socket.remote_endpoint() << std::endl;
 
             auto conn = connection::create(std::move(socket));
-            conn->on_recv([&](string cmd)
-            {
-                std::cout << "Received: " << cmd << std::endl;
-
-                if(cmd.compare(0, 4, "prv=") == 0)
-                {
-                    cmd.erase(0, 4);
-                    char* end;
-                    auto in = std::strtol(cmd.data(), &end, 0);
-
-                    if(end == cmd.data() + cmd.size())
-                        device.me(0).set_pvw(static_cast<atem::input_id>(in));
-                    else std::cout << "Invalid input # '" << cmd << "'" << std::endl;
-                }
-                else if(cmd == "auto") device.me(0).auto_trans();
-            });
+            conn->on_received(std::bind(execute, std::ref(device), std::placeholders::_1));
 
             std::cout << "Waiting for commands" << std::endl;
             conn->start();

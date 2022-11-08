@@ -27,7 +27,7 @@ public:
     }
 
     using recv_cb = std::function<void(string)>;
-    void on_recv(recv_cb cb) { recv_cb_ = std::move(cb); }
+    void on_received(recv_cb cb) { recv_cb_ = std::move(cb); }
 
     void start() { async_wait(); }
 
