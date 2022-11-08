@@ -20,4 +20,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE ASIO_STANDALONE ASIO_NO_DEPRE
 target_compile_definitions(${PROJECT_NAME} PRIVATE VERSION="${PROJECT_VERSION}")
 target_link_libraries(${PROJECT_NAME} PRIVATE atem++)
 
+if(CYGWIN)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _WIN32_WINNT=0x0601 __USE_W32_SOCKETS)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32 wsock32)
+endif()
+
 install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
