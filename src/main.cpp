@@ -9,23 +9,27 @@
 #include <atem++.hpp>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <vector>
 
 #include "connection.hpp"
 #include "pgm/args.hpp"
 #include "server.hpp"
 
 using std::string;
+using std::vector;
+using weak_connection = std::weak_ptr<connection>;
 
 ////////////////////////////////////////////////////////////////////////////////
 const string default_bind_address = "0.0.0.0";
-const string default_bind_port = "8899";
-
-const string default_atem_port = "9910";
+const string default_bind_port = "1230";
 
 const string default_bind_uri = default_bind_address + ":" + default_bind_port;
+
+const string default_atem_port = "9910";
 
 ////////////////////////////////////////////////////////////////////////////////
 auto parse_uri(const string& uri, const string& default_address, const string& default_port)
@@ -35,7 +39,7 @@ auto parse_uri(const string& uri, const string& default_address, const string& d
     if(auto p = uri.find(':'); p != uri.npos)
     {
         address = uri.substr(0, p);
-        port = uri.substr(p+1);
+        port = uri.substr(p + 1);
 
         if(address.empty()) address = default_address;
     }
@@ -61,21 +65,50 @@ void show_info(const atem::device& device)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void execute(atem::device& device, string cmd)
+auto parse_cmd(string cmd)
 {
-    std::cout << "Received: " << cmd << std::endl;
+    atem::input_id in{ };
 
-    if(cmd.compare(0, 4, "prv=") == 0)
+    if(cmd.compare(0, 3, "pg_") == 0 || cmd.compare(0, 3, "pv_") == 0)
     {
-        cmd.erase(0, 4);
-        char* end;
-        auto in = std::strtol(cmd.data(), &end, 0);
+        auto tail = cmd.substr(3);
+        cmd.erase(2);
 
-        if(end == cmd.data() + cmd.size())
-            device.me(0).set_pvw(static_cast<atem::input_id>(in));
-        else std::cout << "Invalid input # '" << cmd << "'" << std::endl;
+        char* end;
+        auto n = std::strtol(tail.data(), &end, 0);
+
+        if(end != tail.data() + tail.size())
+        {
+            std::cout << "Invalid input # '" << tail << "'" << std::endl;
+            in = atem::no_id;
+        }
+        else in = static_cast<atem::input_id>(n);
     }
-    else if(cmd == "auto") device.me(0).auto_trans();
+
+    return std::make_tuple(std::move(cmd), in);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void notify_all(vector<weak_connection>& active, const string& cmd)
+{
+    for(auto it = active.begin(); it != active.end(); )
+    {
+        if(auto conn = it->lock())
+        {
+            try { conn->send(cmd + '\n'); }
+            catch(const std::exception& e)
+            {
+                std::cout << "Error: " << e.what() << std::endl;
+                conn->stop();
+            }
+            it++;
+        }
+        else
+        {
+            std::cout << "Removing inactive connection" << std::endl;
+            it = active.erase(it);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,12 +170,28 @@ try
         server server{ctx, local_address, local_port};
         std::cout << "Bound to " << local_address << ":" << local_port << std::endl;
 
+        vector<weak_connection> active;
+
         server.on_accepted([&](auto socket)
         {
             std::cout << "Accepted connection from " << socket.remote_endpoint() << std::endl;
 
             auto conn = connection::create(std::move(socket));
-            conn->on_received(std::bind(execute, std::ref(device), std::placeholders::_1));
+            active.emplace_back(conn);
+
+            conn->on_received([&](const string& cmd)
+            {
+                std::cout << "Received: " << cmd << std::endl;
+
+                auto [ch, in] = parse_cmd(cmd);
+                     if(ch == "tr") device.me(0).auto_trans();
+                else if(ch == "ct") device.me(0).cut();
+                else if(in != atem::no_id)
+                {
+                         if(ch == "pg") device.me(0).set_pgm(in);
+                    else if(ch == "pv") device.me(0).set_pvw(in);
+                }
+            });
 
             std::cout << "Waiting for commands" << std::endl;
             conn->start();
@@ -152,6 +201,22 @@ try
         {
             std::cout << "Connected to ATEM on " << remote_address << ":" << remote_port << std::endl;
             show_info(device);
+
+            device.me(0).on_pgm_changed([&](auto in)
+            {
+                auto cmd = "pg=" + std::to_string(in);
+                std::cout << "Notifying: " << cmd << std::endl;
+
+                notify_all(active, cmd); 
+            });
+
+            device.me(0).on_pvw_changed([&](auto in)
+            {
+                auto cmd = "pv=" + std::to_string(in);
+                std::cout << "Notifying: " << cmd << std::endl;
+
+                notify_all(active, cmd);
+            });
 
             std::cout << "Listening for connections" << std::endl;
             server.start();
