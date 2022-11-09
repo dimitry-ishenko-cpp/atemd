@@ -35,6 +35,7 @@ public:
     }
 
     void start() { async_wait(); }
+    void stop() { socket_.cancel(); }
 
 private:
     tcp::socket socket_;
