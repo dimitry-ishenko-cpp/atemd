@@ -159,13 +159,17 @@ try
         {
             if(!ec)
             {
-                std::cout << "Received signal " << signal << ", exiting" << std::endl;
+                std::cout << "Received signal " << signal << " - exiting" << std::endl;
                 ctx.stop();
             }
         });
 
         atem::device device{ctx, remote_address, remote_port};
-        device.on_offline([]{ throw std::runtime_error{"Lost connection to ATEM"}; });
+        device.on_offline([&]
+        {
+            std::cout << "Lost connection to ATEM - exiting";
+            ctx.stop();
+        });
 
         server server{ctx, local_address, local_port};
         std::cout << "Bound to " << local_address << ":" << local_port << std::endl;
