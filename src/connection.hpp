@@ -26,20 +26,20 @@ public:
         return std::shared_ptr<connection>(new connection{ std::move(socket) });
     }
 
-    using recv_cb = std::function<void(const string&)>;
+    using recv_cb = std::function<string(const string&)>;
     void on_received(recv_cb cb) { recv_cb_ = std::move(cb); }
 
-    void send(const string& data)
-    {
-        socket_.send(asio::buffer(data));
-    }
-
     void start() { async_wait(); }
-    void stop() { socket_.cancel(); }
+
+    using msg_cb = std::function<void(const string&)>;
+    void on_message(msg_cb cb) { msg_cb_ = std::move(cb); }
 
 private:
     tcp::socket socket_;
+
     recv_cb recv_cb_;
+    msg_cb msg_cb_;
+
     string data_;
 
     explicit connection(tcp::socket socket) : socket_{std::move(socket)} { }
@@ -70,12 +70,23 @@ private:
                 auto cmd = data_.substr(0, p);
                 data_.erase(0, p + 1);
 
-                if(recv_cb_) recv_cb_(cmd);
+                if(recv_cb_) if(auto reply = recv_cb_(cmd); reply.size())
+                {
+                    asio::error_code ec;
+                    socket_.send(asio::buffer(reply + '\n'), { }, ec);
+                    if(ec)
+                    {
+                        message("Send error: " + ec.message());
+                        return;
+                    }
+                }
             }
 
             async_wait();
         }
     }
+
+    void message(const string& s) { if(msg_cb_) msg_cb_(s); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

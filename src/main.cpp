@@ -61,21 +61,27 @@ void show_info(const atem::device& device)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void execute(atem::device& device, string cmd)
+auto parse_cmd(string cmd)
 {
-    std::cout << "Received: " << cmd << std::endl;
+    atem::input_id in{ };
 
     if(cmd.compare(0, 4, "prv=") == 0)
     {
-        cmd.erase(0, 4);
-        char* end;
-        auto in = std::strtol(cmd.data(), &end, 0);
+        auto tail = cmd.substr(4);
+        cmd.erase(3);
 
-        if(end == cmd.data() + cmd.size())
-            device.me(0).set_pvw(static_cast<atem::input_id>(in));
-        else std::cout << "Invalid input # '" << cmd << "'" << std::endl;
+        char* end;
+        auto n = std::strtol(tail.data(), &end, 0);
+
+        if(end != tail.data() + tail.size())
+        {
+            std::cout << "Invalid input # '" << tail << "'" << std::endl;
+            in = atem::no_id;
+        }
+        else in = static_cast<atem::input_id>(n);
     }
-    else if(cmd == "auto") device.me(0).auto_trans();
+
+    return std::make_tuple(std::move(cmd), in);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +152,29 @@ try
             std::cout << "Accepted connection from " << socket.remote_endpoint() << std::endl;
 
             auto conn = connection::create(std::move(socket));
-            conn->on_received(std::bind(execute, std::ref(device), std::placeholders::_1));
+            conn->on_received([&](const string& cmd) -> auto
+            {
+                std::cout << "Received: " << cmd << std::endl;
+
+                auto [ch, in] = parse_cmd(cmd);
+                if(ch == "auto")
+                {
+                    device.me(0).auto_trans();
+                    return string{"ACK"};
+                }
+                else if(ch == "ping")
+                {
+                    return string{"ACK"};
+                }
+                else if(in != atem::no_id && ch == "prv") 
+                {
+                    device.me(0).set_pvw(in);
+                    return cmd;
+                }
+                else return string{ };
+            });
+
+            conn->on_message([](const string& msg) { std::cout << msg << std::endl; });
 
             std::cout << "Waiting for commands" << std::endl;
             conn->start();
