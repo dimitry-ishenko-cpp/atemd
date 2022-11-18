@@ -10,9 +10,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 #include <asio.hpp>
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
+
+using namespace std::chrono_literals;
 
 ////////////////////////////////////////////////////////////////////////////////
 class connection : public std::enable_shared_from_this<connection>
@@ -36,13 +39,16 @@ public:
 
 private:
     tcp::socket socket_;
+    asio::steady_timer timer_;
 
     recv_cb recv_cb_;
     msg_cb msg_cb_;
 
     string data_;
 
-    explicit connection(tcp::socket socket) : socket_{std::move(socket)} { }
+    explicit connection(tcp::socket socket) :
+        socket_{std::move(socket)}, timer_{socket_.get_executor()}
+    { }
 
     void async_wait()
     {
@@ -55,6 +61,16 @@ private:
         socket_.async_wait(tcp::socket::wait_read,
             std::bind(&connection::recv, shared_from_this(), std::placeholders::_1)
         );
+
+        timer_.expires_after(30s);
+        timer_.async_wait([&](asio::error_code ec)
+        {
+            if(!ec)
+            {
+                message("Closing connection - timeout");
+                socket_.cancel();
+            }
+        });
     }
 
     void recv(asio::error_code ec)
