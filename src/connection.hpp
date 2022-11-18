@@ -81,15 +81,15 @@ private:
             socket_.receive(asio::buffer(data));
             data_ += data;
 
-            for(std::size_t p; (p = data_.find('\n')) != data_.npos; )
+            for(std::size_t p; (p = data_.find("\r\n")) != data_.npos; )
             {
                 auto cmd = data_.substr(0, p);
-                data_.erase(0, p + 1);
+                data_.erase(0, p + 2);
 
                 if(recv_cb_) if(auto reply = recv_cb_(cmd); reply.size())
                 {
                     asio::error_code ec;
-                    socket_.send(asio::buffer(reply + '\n'), { }, ec);
+                    socket_.send(asio::buffer(reply + "\r\n"), { }, ec);
                     if(ec)
                     {
                         message("Send error: " + ec.message());
