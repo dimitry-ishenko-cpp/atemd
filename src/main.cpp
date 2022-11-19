@@ -157,21 +157,25 @@ try
                 std::cout << "Received: " << cmd << std::endl;
 
                 auto [ch, in] = parse_cmd(cmd);
+                string reply;
+
                 if(ch == "auto")
                 {
                     device.me(0).auto_trans();
-                    return string{"ACK"};
+                    reply = "ACK";
                 }
                 else if(ch == "ping")
                 {
-                    return string{"ACK"};
+                    reply = "ACK";
                 }
                 else if(in != atem::no_id && ch == "prv") 
                 {
                     device.me(0).set_pvw(in);
-                    return cmd;
+                    reply = cmd;
                 }
-                else return string{ };
+
+                if(reply.size()) std::cout << "Replying: " << reply << std::endl;
+                return reply;
             });
 
             conn->on_message([](const string& msg) { std::cout << msg << std::endl; });
