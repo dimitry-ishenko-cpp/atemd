@@ -7,10 +7,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <asio.hpp>
 #include <atem++.hpp>
+#include <exception>
 #include <filesystem>
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -95,10 +95,11 @@ void notify_all(vector<weak_connection>& active, const string& cmd)
     {
         if(auto conn = it->lock())
         {
-            try { conn->send(cmd + '\n'); }
-            catch(const std::exception& e)
+            if(auto ec = conn->send(cmd + '\n'); ec)
             {
-                std::cout << "Error: " << e.what() << std::endl;
+                std::cout << "Send error: " << ec.message() << std::endl;
+
+                std::cout << "Closing connection" << std::endl;
                 conn->stop();
             }
             it++;

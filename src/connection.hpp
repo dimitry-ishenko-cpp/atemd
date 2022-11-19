@@ -29,9 +29,11 @@ public:
     using recv_cb = std::function<void(const string&)>;
     void on_received(recv_cb cb) { recv_cb_ = std::move(cb); }
 
-    void send(const string& data)
+    auto send(const string& data)
     {
-        socket_.send(asio::buffer(data));
+        asio::error_code ec;
+        socket_.send(asio::buffer(data), { }, ec);
+        return ec;
     }
 
     void start() { async_wait(); }
