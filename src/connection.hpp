@@ -32,7 +32,7 @@ public:
     auto send(const string& data)
     {
         asio::error_code ec;
-        socket_.send(asio::buffer(data), { }, ec);
+        socket_.send(asio::buffer(data + '\n'), { }, ec);
         return ec;
     }
 

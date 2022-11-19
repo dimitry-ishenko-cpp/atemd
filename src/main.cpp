@@ -95,7 +95,7 @@ void notify_all(vector<weak_connection>& active, const string& cmd)
     {
         if(auto conn = it->lock())
         {
-            if(auto ec = conn->send(cmd + '\n'); ec)
+            if(auto ec = conn->send(cmd); ec)
             {
                 std::cout << "Send error: " << ec.message() << std::endl;
 
