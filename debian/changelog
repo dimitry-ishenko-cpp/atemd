@@ -1,5 +1,35 @@
-atemd (0.0) UNRELEASED; urgency=medium
+atemd (0.1) unstable; urgency=medium
 
-  * Initial Release.
+  * Add Debian packaging
+  * main: add missed endl
+  * server: auto-start
+  * main: notify_all -> notify
+  * connection: simplify
+  * Handle line-ending inside connection
+  * Ignore win dir
+  * Use error code instead of exception
+  * main: exit gracefully on disconnect
+  * main: re-write for new commands
+  * connection: add stop() function
+  * connection: add send() function, don't ACK
+  * Add support for cygwin
+  * Refactor
+  * main: tweak info output
+  * sock -> socket
+  * main: exit gracefully on SIGINT and SIGTERM
+  * connection: don't send '\0'
+  * Add .gitignore
+  * Add license
+  * Initial implementation
+  * server: clean-ups
+  * connection: add string alias
+  * connection: ack each command
+  * Add server and connection classes
+  * CMakeLists.txt: make definitions private
+  * Implement basic option processing
+  * Add pgm::args to project
+  * Import pgm::args submodule
+  * Add project skeleton
+  * Initial commit
 
- -- Dimitry Ishenko <dimitry.ishenko@gmail.com>  Sun, 20 Nov 2022 16:10:09 -0500
+ -- Dimitry Ishenko <dimitry.ishenko@gmail.com>  Sun, 20 Nov 2022 16:57:42 -0500
