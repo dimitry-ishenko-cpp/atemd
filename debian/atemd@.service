@@ -1,0 +1,13 @@
+[Unit]
+Description=ATEM controller on %I
+
+[Service]
+Environment="args="
+ExecStart=/usr/bin/atemd $args %I
+Restart=always
+RestartSec=1
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
