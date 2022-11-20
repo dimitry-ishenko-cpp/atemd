@@ -164,6 +164,7 @@ try
 
         server server{ctx, local_address, local_port};
         std::cout << "Bound to " << local_address << ":" << local_port << std::endl;
+        std::cout << "Listening for connections" << std::endl;
 
         connections active;
 
@@ -207,9 +208,6 @@ try
 
                 notify(active, cmd);
             });
-
-            std::cout << "Listening for connections" << std::endl;
-            server.start();
         });
 
         ctx.run();

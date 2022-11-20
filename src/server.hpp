@@ -24,9 +24,7 @@ class server
 public:
     server(asio::io_context& ctx, string_view address, string_view port) :
         acceptor_{ctx, make_endpoint(address, port)}
-    { }
-
-    void start() { async_accept(); }
+    { async_accept(); }
 
     using accept_cb = std::function<void(tcp::socket)>;
     void on_accepted(accept_cb cb) { accept_cb_ = std::move(cb); }
