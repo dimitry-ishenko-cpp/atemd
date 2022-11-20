@@ -87,7 +87,7 @@ auto parse_cmd(string cmd)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void notify_all(connections& active, const string& cmd)
+void notify(connections& active, const string& cmd)
 {
     for(auto it = active.begin(); it != active.end(); )
     {
@@ -197,7 +197,7 @@ try
                 auto cmd = "pg=" + std::to_string(in);
                 std::cout << "Notifying: " << cmd << std::endl;
 
-                notify_all(active, cmd); 
+                notify(active, cmd); 
             });
 
             device.me(0).on_pvw_changed([&](auto in)
@@ -205,7 +205,7 @@ try
                 auto cmd = "pv=" + std::to_string(in);
                 std::cout << "Notifying: " << cmd << std::endl;
 
-                notify_all(active, cmd);
+                notify(active, cmd);
             });
 
             std::cout << "Listening for connections" << std::endl;
