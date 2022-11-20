@@ -10,18 +10,16 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
-#include <memory>
+#include <list>
 #include <string>
 #include <tuple>
-#include <vector>
 
 #include "connection.hpp"
 #include "pgm/args.hpp"
 #include "server.hpp"
 
 using std::string;
-using std::vector;
-using weak_connection = std::weak_ptr<connection>;
+using connections = std::list<connection>;
 
 ////////////////////////////////////////////////////////////////////////////////
 const string default_bind_address = "0.0.0.0";
@@ -89,26 +87,18 @@ auto parse_cmd(string cmd)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void notify_all(vector<weak_connection>& active, const string& cmd)
+void notify_all(connections& active, const string& cmd)
 {
     for(auto it = active.begin(); it != active.end(); )
     {
-        if(auto conn = it->lock())
+        if(auto ec = it->send(cmd))
         {
-            if(auto ec = conn->send(cmd); ec)
-            {
-                std::cout << "Send error: " << ec.message() << std::endl;
+            std::cout << "Send error: " << ec.message() << std::endl;
 
-                std::cout << "Closing connection" << std::endl;
-                conn->stop();
-            }
-            it++;
-        }
-        else
-        {
-            std::cout << "Removing inactive connection" << std::endl;
+            std::cout << "Closing connection" << std::endl;
             it = active.erase(it);
         }
+        else ++it;
     }
 }
 
@@ -175,16 +165,14 @@ try
         server server{ctx, local_address, local_port};
         std::cout << "Bound to " << local_address << ":" << local_port << std::endl;
 
-        vector<weak_connection> active;
+        connections active;
 
         server.on_accepted([&](auto socket)
         {
             std::cout << "Accepted connection from " << socket.remote_endpoint() << std::endl;
 
-            auto conn = connection::create(std::move(socket));
-            active.emplace_back(conn);
-
-            conn->on_received([&](const string& cmd)
+            auto& conn = active.emplace_back(std::move(socket));
+            conn.on_received([&](const string& cmd)
             {
                 std::cout << "Received: " << cmd << std::endl;
 
@@ -197,9 +185,6 @@ try
                     else if(ch == "pv") device.me(0).set_pvw(in);
                 }
             });
-
-            std::cout << "Waiting for commands" << std::endl;
-            conn->start();
         });
 
         device.on_defined([&]
