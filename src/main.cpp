@@ -158,7 +158,7 @@ try
         atem::device device{ctx, remote_address, remote_port};
         device.on_offline([&]
         {
-            std::cout << "Lost connection to ATEM - exiting";
+            std::cout << "Lost connection to ATEM - exiting" << std::endl;
             ctx.stop();
         });
 
