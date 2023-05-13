@@ -59,7 +59,7 @@ atemd::atemd(std::string_view bind_address, std::string_view bind_port, std::str
 
     device_.on_offline([=]
     {
-        std::cout << "Lost connection to ATEM - exiting";
+        std::cout << "Lost connection to ATEM - exiting" << std::endl;
         stop();
     });
 
