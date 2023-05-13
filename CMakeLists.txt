@@ -8,6 +8,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(SOURCES
     pgm/args.hpp pgm/args.ipp
+    src/atemd.hpp src/atemd.cpp
     src/connection.hpp
     src/main.cpp
     src/server.hpp
