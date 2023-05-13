@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "atemd.hpp"
 #include "pgm/args.hpp"
+#include "win/service.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -53,6 +54,8 @@ try
     pgm::args args
     {
         { "-b", "--bind-to", "[addr][:port]", "Local end-point to bind to. Default: " + default_bind_uri },
+        { "-s", "--service",                  "Run as Windows service."          },
+
         { "-h", "--help",                     "Print this help screen and exit." },
         { "-v", "--version",                  "Show version number and exit."    },
 
@@ -84,7 +87,15 @@ try
         auto [atem_address, atem_port] = parse_uri(atem, "", default_atem_port);
 
         atemd atemd{ bind_address, bind_port, atem_address, atem_port };
-        atemd.run();
+
+        if(args["--service"])
+        {
+            win::service::start(name,
+                [&]{ atemd.run(); return 0; },
+                [&]{ atemd.stop(); }
+            );
+        }
+        else atemd.run();
     }
 
     return 0;

@@ -12,6 +12,7 @@ set(SOURCES
     src/connection.hpp
     src/main.cpp
     src/server.hpp
+    win/service.hpp win/service.cpp
 )
 
 include(GNUInstallDirs)
