@@ -10,6 +10,7 @@
 #include "win/service.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -49,11 +50,14 @@ int main(int argc, char* argv[])
 try
 {
     namespace fs = std::filesystem;
-    auto name = fs::path{argv[0]}.filename().string();
+
+    auto path = fs::path{argv[0]};
+    auto name = path.filename().string();
 
     pgm::args args
     {
         { "-b", "--bind-to", "[addr][:port]", "Local end-point to bind to. Default: " + default_bind_uri },
+        { "-f", "--log-to-file",              "Log to file instead of console."  },
         { "-s", "--service",                  "Run as Windows service."          },
 
         { "-h", "--help",                     "Print this help screen and exit." },
@@ -80,6 +84,13 @@ try
     }
     else
     {
+        std::ofstream file;
+        if(args["--log-to-file"])
+        {
+            file.open(path.replace_extension(".log"));
+            if(file) std::cout.rdbuf(file.rdbuf()); // redirect std::cout to file
+        }
+
         auto bind = args["--bind-to"].value_or(default_bind_uri);
         auto [bind_address, bind_port] = parse_uri(bind, default_bind_address, default_bind_port);
 
