@@ -63,9 +63,9 @@ void WINAPI service::main(DWORD argc, char* argv[])
         if(srv->run_cb_) srv->run_cb_();
         srv->set_stopped(0);
     }
-    catch(const windows_error& e)
+    catch(const std::system_error& e)
     {
-        std::cout << e.what() << std::endl;
+        std::cout << e.what() << " (" << e.code().value() << ")" << std::endl;
         srv->set_stopped(e.code().value());
     }
     catch(const std::exception& e)
