@@ -23,23 +23,27 @@ public:
     using run_cb = std::function<int()>;
     using stop_cb = std::function<void()>;
 
-    static void start(std::string name, run_cb, stop_cb);
+    service(std::string name);
+
+    void start(run_cb, stop_cb);
 
 private:
-    static std::string name_;
+    std::string name_;
 
-    static run_cb run_cb_;
-    static stop_cb stop_cb_;
+    run_cb run_cb_;
+    stop_cb stop_cb_;
 
-    static SERVICE_STATUS status_;
-    static SERVICE_STATUS_HANDLE handle_;
+    SERVICE_STATUS status_{ }; // zero-initialized
+    SERVICE_STATUS_HANDLE handle_ = nullptr;
 
+    void set_running();
+    void set_stop_pending();
+    void set_stopped(int exit_code);
+
+    ////////////////////
+    static service* ctx_;
     static void WINAPI main(DWORD argc, char* argv[]);
-    static void WINAPI control(DWORD);
-
-    static void set_running();
-    static void set_stop_pending();
-    static void set_stopped(int exit_code);
+    static DWORD WINAPI control(DWORD, DWORD, LPVOID, LPVOID);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

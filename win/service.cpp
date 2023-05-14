@@ -7,7 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "service.hpp"
 
-#include <string>
+#include <iostream>
 #include <system_error>
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -19,34 +19,24 @@ class windows_error : public std::system_error
 {
 public:
     explicit windows_error(const std::string& msg) :
-        std::system_error{std::error_code{ int(GetLastError()), std::system_category() }, msg}
+        std::system_error{static_cast<int>(GetLastError()), std::system_category(), msg}
     { }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-std::string service::name_;
-
-service::run_cb service::run_cb_;
-service::stop_cb service::stop_cb_;
-
-SERVICE_STATUS service::status_
-{
-    SERVICE_WIN32_OWN_PROCESS,
-    0, // dwCurrentState
-    SERVICE_ACCEPT_STOP,
-    0, // dwWin32ExitCode
-    0, // dwServiceSpecificExitCode
-    0, // dwCheckPoint
-    0, // dwWaitHint
-};
-
-SERVICE_STATUS_HANDLE service::handle_ = nullptr;
+service* service::ctx_ = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
-void service::start(std::string name, run_cb run_cb, stop_cb stop_cb)
+service::service(std::string name) :
+    name_{std::move(name)}
 {
-    name_ = std::move(name);
+    status_.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+    status_.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+}
 
+////////////////////////////////////////////////////////////////////////////////
+void service::start(run_cb run_cb, stop_cb stop_cb)
+{
     run_cb_ = std::move(run_cb);
     stop_cb_ = std::move(stop_cb);
 
@@ -55,34 +45,46 @@ void service::start(std::string name, run_cb run_cb, stop_cb stop_cb)
         { name_.data(), &service::main },
         { nullptr, nullptr }
     };
+    ctx_ = this;
 
     if(!StartServiceCtrlDispatcher(table)) throw windows_error{"StartServiceCtrlDispatcher"};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void WINAPI service::main(DWORD argc, char* argv[])
-try
 {
-    handle_ = RegisterServiceCtrlHandler(name_.data(), &service::control);
-    if(!handle_) throw windows_error{"RegisterServiceCtrlHandler"};
+    auto srv = ctx_;
+    try
+    {
+        srv->handle_ = RegisterServiceCtrlHandlerEx(srv->name_.data(), &service::control, srv);
+        if(!srv->handle_) throw windows_error{"RegisterServiceCtrlHandler"};
 
-    set_running();
-    auto exit_code = run_cb_();
-    set_stopped(exit_code);
-}
-catch(const std::system_error& e)
-{
-    set_stopped(e.code().value());
+        srv->set_running();
+        if(srv->run_cb_) srv->run_cb_();
+        srv->set_stopped(0);
+    }
+    catch(const windows_error& e)
+    {
+        std::cout << e.what() << std::endl;
+        srv->set_stopped(e.code().value());
+    }
+    catch(const std::exception& e)
+    {
+        std::cout << e.what() << std::endl;
+        srv->set_stopped(ERROR_INVALID_FUNCTION);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WINAPI service::control(DWORD state)
+DWORD WINAPI service::control(DWORD state, DWORD, LPVOID, LPVOID ctx)
 {
     if(state == SERVICE_CONTROL_STOP)
     {
-        set_stop_pending();
-        stop_cb_();
+        auto srv = static_cast<service*>(ctx);
+        srv->set_stop_pending();
+        if(srv->stop_cb_) srv->stop_cb_();
     }
+    return NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
