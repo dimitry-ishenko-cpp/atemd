@@ -11,18 +11,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <asio.hpp>
 #include <functional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
 ////////////////////////////////////////////////////////////////////////////////
 class server
 {
-    using string = std::string;
-    using string_view = std::string_view;
     using tcp = asio::ip::tcp;
 
 public:
-    server(asio::io_context& ctx, string_view address, string_view port) :
+    server(asio::io_context& ctx, std::string_view address, std::string_view port) :
         acceptor_{ctx, make_endpoint(address, port)}
     { }
 
@@ -47,20 +46,20 @@ private:
         });
     }
 
-    tcp::endpoint make_endpoint(string_view address, string_view port)
+    tcp::endpoint make_endpoint(std::string_view address, std::string_view port)
     {
         asio::error_code ec;
         auto address_ = asio::ip::make_address(address, ec);
 
         if(ec) throw std::invalid_argument{
-            "Invalid address '" + string{address} + "'"
+            "Invalid address '" + std::string{address} + "'"
         };
 
         char* end;
         unsigned short port_ = std::strtol(port.data(), &end, 0);
 
         if(end != port.data() + port.size()) throw std::invalid_argument{
-            "Invalid port # '" + string{port} + "'"
+            "Invalid port # '" + std::string{port} + "'"
         };
 
         return tcp::endpoint{address_, port_};

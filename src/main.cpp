@@ -21,7 +21,6 @@
 #include <thread>
 
 namespace fs = std::filesystem;
-
 using namespace std::chrono_literals;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,20 +150,28 @@ void run_service(std::string name, std::string_view bind_address, std::string_vi
     service.start([&] // run_cb
     {
         for(; !done; ctx.restart())
-        try
         {
-            std::cout << "Starting service" << std::endl;
-            run_atemd(ctx, bind_address, bind_port, atem_address, atem_port);
-        }
-        catch(const std::exception& e)
-        {
-            std::cout << e.what() << std::endl;
+            try
+            {
+                std::cout << "Starting service" << std::endl;
+                run_atemd(ctx, bind_address, bind_port, atem_address, atem_port);
+                continue; // don't sleep
+            }
+            catch(const std::system_error& e)
+            {
+                std::cout << e.what() << " (" << e.code().value() << ")" << std::endl;
+            }
+            catch(const std::exception& e)
+            {
+                std::cout << e.what() << std::endl;
+            }
 
+            // sleep only if an exception was thrown
             std::cout << "Sleeping for 5 seconds..." << std::endl;
             std::this_thread::sleep_for(5s);
         }
 
-        std::cout << "Done" << std::endl;
+        std::cout << "Exiting service" << std::endl;
         return 0;
     },
     [&] // stop_cb

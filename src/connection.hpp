@@ -20,7 +20,6 @@ using namespace std::chrono_literals;
 ////////////////////////////////////////////////////////////////////////////////
 class connection : public std::enable_shared_from_this<connection>
 {
-    using string = std::string;
     using tcp = asio::ip::tcp;
 
 public:
@@ -29,12 +28,12 @@ public:
         return std::shared_ptr<connection>(new connection{ std::move(socket) });
     }
 
-    using recv_cb = std::function<string(const string&)>;
+    using recv_cb = std::function<std::string(const std::string&)>;
     void on_received(recv_cb cb) { recv_cb_ = std::move(cb); }
 
     void start() { async_wait(); }
 
-    using msg_cb = std::function<void(const string&)>;
+    using msg_cb = std::function<void(const std::string&)>;
     void on_message(msg_cb cb) { msg_cb_ = std::move(cb); }
 
 private:
@@ -44,7 +43,7 @@ private:
     recv_cb recv_cb_;
     msg_cb msg_cb_;
 
-    string data_;
+    std::string data_;
 
     explicit connection(tcp::socket socket) :
         socket_{std::move(socket)}, timer_{socket_.get_executor()}
@@ -77,7 +76,7 @@ private:
     {
         if(!ec)
         {
-            string data(socket_.available(), '\0');
+            std::string data(socket_.available(), '\0');
             socket_.receive(asio::buffer(data));
             data_ += data;
 
@@ -102,7 +101,7 @@ private:
         }
     }
 
-    void message(const string& s) { if(msg_cb_) msg_cb_(s); }
+    void message(const std::string& s) { if(msg_cb_) msg_cb_(s); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
